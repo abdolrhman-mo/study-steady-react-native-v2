@@ -30,7 +30,7 @@ export default function Layout() {
   useEffect(() => {
     const checkAuth = async () => {
       const token = await getToken();
-      console.log('layout token:', token);
+    //   console.log('layout token:', token);
       setIsAuthenticated(!!token);
       setLoading(false);
     };

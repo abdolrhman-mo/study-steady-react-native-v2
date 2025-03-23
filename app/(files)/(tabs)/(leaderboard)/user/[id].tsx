@@ -28,7 +28,7 @@ const User = () => {
         const myId = await getId()
 
         if (userId && myId) {
-          const userResponse = await apiClient.get(`/api-auth/${userId}/`)
+          const userResponse = await apiClient.get(`/users/${userId}/`)
           setUserData(userResponse.data)
 
           const followStatusResponse = await apiClient.post(

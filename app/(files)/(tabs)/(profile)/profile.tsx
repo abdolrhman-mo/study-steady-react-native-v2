@@ -33,8 +33,13 @@ const Profile = () => {
       try {
         const id = await getId()
         if (id) {
-          const response = await apiClient.get(`/api-auth/${id}/`)
-          setData(response.data)
+          const res1 = await apiClient.get(`/users/${id}/`)
+          const res2 = await apiClient.get(`/streak/`)
+          setData({
+            username: res1.data.username,
+            current_streak: res2.data.current_streak,
+            top_streak: res2.data.top_streak,
+          })
         } else {
           throw new Error('ID not found')
         }

@@ -25,7 +25,7 @@ const Profile = () => {
       try {
         const id = await getId()
         if (id) {
-          const dynamicEndpoint = `/api-auth/${id}/`
+          const dynamicEndpoint = `/users/${id}/`
           setEndpoint(dynamicEndpoint)  // Set the endpoint state to trigger useEffect
 
           const response = await apiClient.get(dynamicEndpoint)

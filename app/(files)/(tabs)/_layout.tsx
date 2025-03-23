@@ -36,7 +36,7 @@ export default function TabLayout() {
         const myId = await getId();
         if (myId) {
           // Construct the dynamic endpoint
-          const dynamicEndpoint = `/api-auth/${myId}/`;
+          const dynamicEndpoint = `/users/${myId}/`;
           setEndpoint(dynamicEndpoint); // Set the endpoint state to trigger useEffect
 
           const response = await apiClient.get(dynamicEndpoint)

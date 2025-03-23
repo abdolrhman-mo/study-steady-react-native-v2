@@ -26,7 +26,8 @@ export default function StreakScreen(): JSX.Element {
             try {
                 const id = await getId();
                 if (id) {
-                    const response = await apiClient.get(`/api-auth/${id}/`);
+                    const response = await apiClient.get(`/streak/`);
+                    console.log(`streak response.data: ${response.data}`)
                     setData(response.data);
 
                     dispatch(setCurrentStreak({ currentStreak: response.data.current_streak, lastStudyDate: response.data.last_study_date }));
@@ -35,7 +36,6 @@ export default function StreakScreen(): JSX.Element {
                     throw new Error('ID not found');
                 }
             } catch (err: any) {
-                // console.log('streak err', err)
                 setError(err.message);
 
                 if (err.code == "ERR_NETWORK") {

@@ -17,14 +17,18 @@ import Error from '@/components/error-view';
 
 const Leaderboard = () => {
     const dispatch = useDispatch()
-    const followingList = useSelector((state: RootState) => state.following.followingList)
+    // const followingList = useSelector((state: RootState) => state.following.followingList)
     const followingCount = useSelector((state: RootState) => state.following.followingCount)
     const followersCount = useSelector((state: RootState) => state.following.followersCount)
-    const { data: followingListData, loading: followingListLoading, error: followingListError } = useFetchData(API_ENDPOINTS.FOLLOWING)
+    // const { data: followingListData, loading: followingListLoading, error: followingListError } = useFetchData(API_ENDPOINTS.FOLLOWING)
 
     const [userData, setUserData] = useState<any>(null)
     const [userLoading, setUserLoading] = useState<boolean>(true)
     const [userError, setUserError] = useState<string | null>(null)
+    
+    const [followingListData, setFollowingListData] = useState<any>(null)
+    const [followingListLoading, setFollowingListLoading] = useState<boolean>(true)
+    const [followingListError, setFollowingListError] = useState<string | null>(null)
 
     // Fetch user info
     useEffect(() => {
@@ -32,14 +36,24 @@ const Leaderboard = () => {
             try {
                 const id = await getId();
                 if (id) {
-                    const response = await apiClient.get(`/api-auth/${id}/`);
-                    setUserData(response.data);
-                    console.log('leaderboard user data', response.data);
+                    const res1 = await apiClient.get(`/users/${id}/`);
+                    const res3 = await apiClient.get(`/users/stats/${id}/`)
+                    setUserData({
+                        username: res1.data.username,
+                        following_count: res3.data.following_count,
+                        followers_count: res3.data.followers_count,
+                    });
+                    console.log('leaderboard user data', res1.data);
+                    
+                    const res2 = await apiClient.get(`/users/following/${id}/`)
+                    console.log('leaderboard following list data', res2.data);
+                    setFollowingListData(res2.data)
                 }
             } catch (err: any) {
                 setUserError(err.message)
             } finally {
                 setUserLoading(false)
+                setFollowingListLoading(false)
             }
         };
         fetchUserData();
@@ -122,7 +136,7 @@ const Leaderboard = () => {
             )}
     
             
-            {((followingList?.length > 0) && followingList) ? (
+            {((followingListData?.length > 0) && followingListData) ? (
                 // {/* Leaderboard Title */}
                 <View style={shadowStyle.default}>
                     <AppText style={styles.leaderboardTitle}>Following</AppText>
@@ -135,7 +149,7 @@ const Leaderboard = () => {
             
                     {/* Table Body */}
                     <FlatList
-                        data={followingList}
+                        data={followingListData}
                         renderItem={renderItem}
                         keyExtractor={(item: any) => item.id.toString()}
                         contentContainerStyle={styles.tableBody}

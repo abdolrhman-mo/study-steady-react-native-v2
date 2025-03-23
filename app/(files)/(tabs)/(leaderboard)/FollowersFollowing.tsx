@@ -25,7 +25,9 @@ export default function FollowersFollowing() {
     setLoading(true);
     (async () => {
       try {
-        const endpoint = activeTab === 'followers' ? '/realationships/followers/' : '/realationships/following/';
+        const id = await getId();
+
+        const endpoint = activeTab === 'followers' ? `/users/followers/${id}/` : `/users/following/${id}/`;
         const response = await apiClient.get(endpoint);
         const filteredList = response.data.filter((f: any) => 
           (activeTab === 'followers' ? f.follower.id : f.following.id) !== currentUserId

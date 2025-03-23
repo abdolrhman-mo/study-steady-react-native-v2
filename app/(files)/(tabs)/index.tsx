@@ -40,7 +40,7 @@ export default function PomodoroTimer(): JSX.Element {
         try {
             const id = await getId()
             if (id) {
-                const response = await apiClient.get(`/api-auth/${id}/`)
+                const response = await apiClient.get(`/users/${id}/`)
                 setUserData(response.data)
 
                 dispatch(setCurrentStreak({ currentStreak: response.data.current_streak, lastStudyDate: response.data.last_study_date }))
@@ -77,14 +77,13 @@ export default function PomodoroTimer(): JSX.Element {
     }, [timeLeft]);
     
     const saveSessionData = async (duration: number): Promise<void> => {
-        await postDataToServer({ duration: 25 });
-        // await postDataToServer({ duration });
+        await postDataToServer({ duration });
     };
     
     useEffect(() => {
         // Global State Streak
         if (!saveSessionLoading && saveSessionRes) {
-            console.log('session saved res', saveSessionRes.current_streak);
+            console.log('session saved res', saveSessionRes.current_streak)
             dispatch(updateCurrentStreak(saveSessionRes.current_streak))
         }
     }, [saveSessionRes, saveSessionLoading])

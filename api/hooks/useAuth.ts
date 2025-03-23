@@ -14,10 +14,10 @@ export const useLogin = () => {
 
             console.log('loggedin data', data)
 
-            const token = data.user.token;
+            const token = data.token;
             await saveToken(token);
             
-            const id = data.user.id;
+            const id = data.user_id;
             await saveId(id);
 
             console.log('useAuth: Login successful:', data);
@@ -33,36 +33,6 @@ export const useLogin = () => {
     return { performLogin, loading, error };
 };
 
-// export const useSignup = () => {
-//     const [loading, setLoading] = useState(false);
-//     const [error, setError] = useState<any | null>(null);
-
-//     const performSignup = async (username: string, password: string) => {
-//         setLoading(true);
-//         setError(null);
-//         try {
-//             const data = await signup(username, password);
-
-//             console.log('signedup data', data)
-
-//             const token = data.token;
-//             await saveToken(token);
-            
-//             const id = data.id;
-//             await saveId(id);
-
-//             console.log('useAuth: Signup successful:', data);
-//             return data;
-//         } catch (err: any) {
-//             setError(err);
-//             console.error('useAuth: Signup error:', err);
-//         } finally {
-//             setLoading(false);
-//         }
-//     };
-
-//     return { performSignup, loading, error };
-// };
 
 export const useSignup = () => {
     const [loading, setLoading] = useState(false);
@@ -77,7 +47,7 @@ export const useSignup = () => {
             console.log('Signed up data:', data);
 
             await saveToken(data.token);
-            await saveId(data.id);
+            await saveId(data.user_id);
 
             console.log('useAuth: Signup successful:', data);
             return data;

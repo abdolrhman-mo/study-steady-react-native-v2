@@ -1,12 +1,12 @@
 export const API_ENDPOINTS = {
-    USERS: '/api-auth/',
-    REGISTER: '/api-auth/',
-    LOGIN: '/api-auth/login/',
-    FOLLOWING: '/realationships/following/',
-    FOLLOWERS: '/realationships/followers/',
-    FOLLOW: '/realationships/follow/',
-    UNFOLLOW: '/realationships/unfollow/',
-    CHECK: '/realationships/check/',
-    SESSION: '/streaks/increment/',
-};
+    USERS: '/users/',
+    REGISTER: '/users/register/',
+    LOGIN: '/users/login/',
+    FOLLOWING: '/users/following/',
+    FOLLOWERS: '/users/followers/',
+    FOLLOW: '/users/follow/',
+    UNFOLLOW: '/users/unfollow/',
+    CHECK: '/users/check/',
+    SESSION: '/session/',
+}
   
