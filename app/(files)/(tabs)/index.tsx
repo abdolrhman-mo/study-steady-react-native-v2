@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AppText from '@/components/app-text';
-import { View, TouchableOpacity, Modal, Alert } from 'react-native';
+import { View, TouchableOpacity, Modal } from 'react-native';
 import { Audio } from 'expo-av';
 import { usePostData } from '@/api/hooks/usePostData';
 import { styles } from '@/components/timer/timer.styles';
@@ -16,17 +16,22 @@ import { shadowStyle } from '@/styles/styles';
 import { useFetchData } from '@/api/hooks/useFetchData';
 
 
-export default function PomodoroTimer(): JSX.Element {
+export default function Timer(): JSX.Element {
+    // Timer Main States
+    const [startTime, setStartTime] = useState<number | null>(null);
     const [timeLeft, setTimeLeft] = useState<number>(0);
     const [isRunning, setIsRunning] = useState<boolean>(false);
     const [isPaused, setIsPaused] = useState<boolean>(false);
+    // Timer Secondary States
     const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
-    const [sound, setSound] = useState<Audio.Sound | null>(null);
-    const [modalVisible, setModalVisible] = useState<boolean>(false);
-    const [promptModalVisible, setPromptModalVisible] = useState<boolean>(false);
     const [duration, setDuration] = useState<number>(0);
     const [isBreak, setIsBreak] = useState<boolean>(false);
+    const [sound, setSound] = useState<Audio.Sound | null>(null);
+    // More States
+    const [modalVisible, setModalVisible] = useState<boolean>(false);
+    const [promptModalVisible, setPromptModalVisible] = useState<boolean>(false);
     const [streak, setStreak] = useState<number>(1);
+
     const { 
         data: saveSessionRes,
         loading: saveSessionLoading,
@@ -57,24 +62,11 @@ export default function PomodoroTimer(): JSX.Element {
         };
         fetchData();
     }, []);
-
-    useEffect(() => {
-        if (timeLeft === 0 && isRunning) {
-            clearInterval(intervalId!);
-            setIsRunning(false);
-            playSound();
-            setModalVisible(true);
-            if (!isBreak) {
-                saveSessionData(duration);
-                setStreak((prevStreak) => prevStreak + 1); // Increase streak after each session
-            }
-        }
-    }, [timeLeft]);
     
     const saveSessionData = async (duration: number): Promise<void> => {
         await postSession(apiEndpoints.session.base, { duration });
     };
-    
+
     useEffect(() => {
         // Global State Streak
         if (!saveSessionLoading && saveSessionRes) {
@@ -83,43 +75,58 @@ export default function PomodoroTimer(): JSX.Element {
         }
     }, [saveSessionRes, saveSessionLoading])
 
-    const startTimer = (minutes: number, breakTime: boolean = false): void => {
-        if (intervalId) {
-            clearInterval(intervalId);
+    // Timer End
+    useEffect(() => {
+        let interval: NodeJS.Timeout | undefined;
+    
+        if (isRunning && startTime) {
+            interval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const newTimeLeft = Math.max(timeLeft - elapsed, 0);
+                setTimeLeft(newTimeLeft);
+    
+                if (newTimeLeft <= 0) {
+                    clearInterval(interval);
+                    setIsRunning(false);
+                    playSound();
+                    setModalVisible(true);
+                    if (!isBreak) {
+                        saveSessionData(duration);
+                        setStreak((prevStreak) => prevStreak + 1); // Increase streak after each session
+                    }
+                }
+            }, 1000);
+        } else {
+            clearInterval(interval);
         }
+    
+        return () => clearInterval(interval);
+    }, [isRunning, startTime]);
+
+    // Timer Start
+    const startTimer = (minutes: number, breakTime: boolean = false): void => {
         setTimeLeft(minutes * 60);
         setDuration(minutes);
+        setStartTime(Date.now());
         setIsRunning(true);
         setIsPaused(false);
-        setIsBreak(breakTime);
+        setIsBreak(breakTime)
 
-        const id = setInterval(() => {
-            setTimeLeft((prev) => prev - 1);
-        }, 1000);
-
-        setIntervalId(id);
-
-        setPromptModalVisible(true);
+        setPromptModalVisible(true)
     };
 
+    // Timer Paused
     const pauseTimer = (): void => {
-        if (intervalId) {
-            clearInterval(intervalId);
-            setIsPaused(true);
-            setIsRunning(false);
-        }
+        setIsPaused(true);
+        setIsRunning(false);
     };
 
+    // Timer Resumed
     const resumeTimer = (): void => {
         if (isPaused) {
-            setIsPaused(false);
+            setStartTime(Date.now() - (timeLeft * 1000)); // Adjust for paused time
             setIsRunning(true);
-
-            const id = setInterval(() => {
-                setTimeLeft((prev) => prev - 1);
-            }, 1000);
-
-            setIntervalId(id);
+            setIsPaused(false);
         }
     };
 
