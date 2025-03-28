@@ -1,4 +1,4 @@
-import { API_ENDPOINTS } from '@/api/endpoints';
+import { apiEndpoints } from '@/api/endpoints';
 import { useFetchData } from '@/api/hooks/useFetchData';
 import AppText from '@/components/app-text';
 import { GRADIENT_COLORS } from '@/constants/colors';
@@ -8,13 +8,17 @@ import React, { useEffect, useState } from 'react';
 import { View, TextInput, FlatList, StyleSheet, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
 
 const SearchFriends = () => {
-    const { data, loading, error } = useFetchData(API_ENDPOINTS.USERS);
+    const { data, loading, error, fetchDataFromServer } = useFetchData()
     const navigation = useNavigation();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filteredFriends, setFilteredFriends] = useState<any>([]);
 
-    const handleSearch = (query: string) => {
+    useEffect(() => {
+        fetchDataFromServer(apiEndpoints.users.base);
+    }, []);
+
+    const handleSearch = async (query: string) => {
         setSearchQuery(query);
 
         if (!data) return;

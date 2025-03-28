@@ -29,7 +29,7 @@ export default function Layout() {
                 }}
             />
             <Stack.Screen
-                name="FollowersFollowing"
+                name="followers-following"
                 options={{
                     title: "Your Connections",
                 }}

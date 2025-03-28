@@ -1,9 +1,7 @@
 import { useLogout } from '@/api/hooks/useAuth'
-import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator } from 'react-native'
-import { getId, getToken } from '@/utils/tokenStorage'
+import React, { useState } from 'react'
+import { View, StyleSheet, Modal, TouchableOpacity } from 'react-native'
 import { router } from 'expo-router'
-import apiClient from '@/api/client'
 import { LinearGradient } from 'expo-linear-gradient'
 import { GRADIENT_COLORS } from '@/constants/colors'
 import AppText from '@/components/app-text'
@@ -12,61 +10,15 @@ import { resetState } from '@/redux/store'
 
 const Profile = () => {
   const dispatch = useDispatch()
-  const [data, setData] = useState<any>(null)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
-  const [endpoint, setEndpoint] = useState<string>('')
 
   const [modalVisible, setModalVisible] = useState(false)
   const { logoutUser } = useLogout()
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const id = await getId()
-        if (id) {
-          const dynamicEndpoint = `/users/${id}/`
-          setEndpoint(dynamicEndpoint)  // Set the endpoint state to trigger useEffect
-
-          const response = await apiClient.get(dynamicEndpoint)
-          setData(response.data)
-          console.log('data:', response.data)
-        } else {
-          throw new Error('ID not found')
-        }
-      } catch (err: any) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
-
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2196F3" />
-      </View>
-    )
-  }
-  if (error) return <AppText style={styles.errorText}>Error: {error}</AppText>
-  if (!data) return <AppText style={styles.errorText}>No data available.</AppText>
 
   const handleLogout = async () => {
     
     dispatch(resetState()) // Clears Redux global state
     logoutUser()           // Logs out user
     router.replace('/login')
-    
-    // logoutUser()
-    // console.log('Profile: Logged out')
-
-    // const token = await getToken()
-    // console.log('Profile token:', token)
-
-    // router.replace('/login')
   }
 
   const confirmLogout = () => {

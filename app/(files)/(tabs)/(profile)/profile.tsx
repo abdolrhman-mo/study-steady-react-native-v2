@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
+import React, { useEffect } from 'react'
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { getId } from '@/utils/tokenStorage'
 import { router } from 'expo-router'
-import apiClient from '@/api/client'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { LinearGradient } from 'expo-linear-gradient';
 import { GRADIENT_COLORS, PRIMARY_COLOR, TROPHY_COLOR } from '@/constants/colors'
@@ -10,13 +9,25 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useFonts, Poppins_400Regular } from '@expo-google-fonts/poppins'
 import AppText from '@/components/app-text'
 import ErrorView from '@/components/error-view'
+import { useFetchData } from '@/api/hooks/useFetchData'
+import { apiEndpoints } from '@/api/endpoints'
 
 SplashScreen.preventAutoHideAsync();
 
 const Profile = () => {
-  const [data, setData] = useState<any>(null)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
+  const { 
+    data: userDetailsData, 
+    loading: userDetailsLoading, 
+    error: userDetailsError, 
+    fetchDataFromServer: fetchUserDetails 
+  } = useFetchData()
+  
+  const { 
+    data: streakData, 
+    loading: streakLoading, 
+    error: streakError, 
+    fetchDataFromServer: fetchStreak 
+} = useFetchData()
 
   const [fontLoaded] = useFonts({
     Poppins_400Regular,
@@ -30,30 +41,19 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
         const id = await getId()
         if (id) {
-          const res1 = await apiClient.get(`/users/${id}/`)
-          const res2 = await apiClient.get(`/streak/`)
-          setData({
-            username: res1.data.username,
-            current_streak: res2.data.current_streak,
-            top_streak: res2.data.top_streak,
-          })
+          await fetchUserDetails(apiEndpoints.users.details(id))
+          await fetchStreak(apiEndpoints.streak.base(id))
         } else {
           throw new Error('ID not found')
         }
-      } catch (err: any) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
     }
 
     fetchData()
   }, [])
 
-  if (loading || !fontLoaded) {
+  if (userDetailsLoading || streakLoading || !fontLoaded) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={PRIMARY_COLOR} />
@@ -61,8 +61,9 @@ const Profile = () => {
     )
   }
 
-  if (error) return <ErrorView error={error} />
-  if (!data) return <AppText style={styles.errorText}>No data available.</AppText> // Translated
+  if (userDetailsError) return <ErrorView error={userDetailsError} />
+  if (streakError) return <ErrorView error={streakError} />
+  if (!userDetailsData) return <AppText style={styles.errorText}>No data available.</AppText> // Translated
 
   return (
     // <View>
@@ -73,18 +74,18 @@ const Profile = () => {
       {/* Profile Header */}
       <View style={styles.header}>
         <Icon name="person-circle-outline" size={60} color={PRIMARY_COLOR} />
-        <AppText style={styles.title}>{data.username}</AppText>
+        <AppText style={styles.title}>{userDetailsData.username}</AppText>
       </View>
 
       {/* Streak Info with Icons */}
       <View style={styles.streakInfo}>
         <View style={styles.streakRow}>
           <Icon name="flame" size={20} color={"#ff5722"} style={styles.icon} />
-          <AppText style={styles.streak}>Streak: {data.current_streak}</AppText> {/* Translated */}
+          <AppText style={styles.streak}>Streak: {streakData.current_streak}</AppText> {/* Translated */}
         </View>
         <View style={styles.streakRow}>
           <Icon name="trophy" size={20} color={TROPHY_COLOR} style={styles.icon} />
-          <AppText style={styles.streak}>Top Streak: {data.top_streak}</AppText> {/* Translated */}
+          <AppText style={styles.streak}>Top Streak: {streakData.top_streak}</AppText> {/* Translated */}
         </View>
       </View>
 

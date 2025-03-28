@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, TouchableOpacity, Modal, Alert } from 'react-native';
-import { Audio } from 'expo-av';
 import Icon from 'react-native-vector-icons/Ionicons';
+import AppText from '@/components/app-text';
+import { View, TouchableOpacity, Modal, Alert } from 'react-native';
+import { Audio } from 'expo-av';
 import { usePostData } from '@/api/hooks/usePostData';
 import { styles } from '@/components/timer/timer.styles';
-import { API_ENDPOINTS } from '@/api/endpoints';
+import { apiEndpoints } from '@/api/endpoints';
 import { getId } from '@/utils/tokenStorage'
-import apiClient from '@/api/client'
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { setCurrentStreak, setTopStreak, updateCurrentStreak } from '@/redux/streakSlice';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GRADIENT_COLORS, PRIMARY_COLOR } from '@/constants/colors';
 import { Svg, Circle } from 'react-native-svg'
-import AppText from '@/components/app-text';
 import { shadowStyle } from '@/styles/styles';
+import { useFetchData } from '@/api/hooks/useFetchData';
 
 
 export default function PomodoroTimer(): JSX.Element {
@@ -27,41 +27,36 @@ export default function PomodoroTimer(): JSX.Element {
     const [duration, setDuration] = useState<number>(0);
     const [isBreak, setIsBreak] = useState<boolean>(false);
     const [streak, setStreak] = useState<number>(1);
-    const { data: saveSessionRes, loading: saveSessionLoading, error: saveSessionError, postDataToServer } = usePostData(API_ENDPOINTS.SESSION);
+    const { 
+        data: saveSessionRes,
+        loading: saveSessionLoading,
+        postDataToServer: postSession
+    } = usePostData(); // Hook
 
-    const dispatch = useDispatch()
-
-    const [userData, setUserData] = useState<any>(null)
-    const [userLoading, setUserLoading] = useState<boolean>(true)
-    const [userError, setUserError] = useState<string | null>(null)
-
+    const {
+        fetchDataFromServer
+    } = useFetchData(); // Hook
+    
+    const dispatch = useDispatch();
+    
     useEffect(() => {
         const fetchData = async () => {
-        try {
-            const id = await getId()
+            const id = await getId();
             if (id) {
-                const response = await apiClient.get(`/users/${id}/`)
-                setUserData(response.data)
-
-                dispatch(setCurrentStreak({ currentStreak: response.data.current_streak, lastStudyDate: response.data.last_study_date }))
-                dispatch(setTopStreak(Number(response.data.top_streak)))
-                
-                if (response.data.current_streak === 0 && response.data.top_streak === 0) {
-                    setStreak(0)
-                    // console.log(streak)
+                const response = await fetchDataFromServer(apiEndpoints.streak.base(id)); // Wait for the fetch
+    
+                if (response) {
+                    dispatch(setCurrentStreak({ currentStreak: response.current_streak }));
+                    dispatch(setTopStreak(Number(response.top_streak)));
+    
+                    if (response.current_streak === 0 && response.top_streak === 0) {
+                        setStreak(0);
+                    }
                 }
-            } else {
-                throw new Error('ID not found')
             }
-        } catch (err: any) {
-            setUserError(err.message)
-        } finally {
-            setUserLoading(false)
-        }
-        }
-
-        fetchData()
-    }, [])
+        };
+        fetchData();
+    }, []);
 
     useEffect(() => {
         if (timeLeft === 0 && isRunning) {
@@ -77,7 +72,7 @@ export default function PomodoroTimer(): JSX.Element {
     }, [timeLeft]);
     
     const saveSessionData = async (duration: number): Promise<void> => {
-        await postDataToServer({ duration });
+        await postSession(apiEndpoints.session.base, { duration });
     };
     
     useEffect(() => {
@@ -223,6 +218,7 @@ export default function PomodoroTimer(): JSX.Element {
             <TouchableOpacity
               style={[styles.minsButton, isRunning && !isPaused && styles.disabledButton]}
               onPress={() => startTimer(25)}
+            //   onPress={() => startTimer(0.05)}
               disabled={isRunning && !isPaused}
             >
               <Icon name="timer-outline" size={20} color={PRIMARY_COLOR} />

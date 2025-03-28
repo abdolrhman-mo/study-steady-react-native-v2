@@ -3,47 +3,57 @@ import React, { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { getId } from '@/utils/tokenStorage'
 import apiClient from '@/api/client'
-import { API_ENDPOINTS } from '@/api/endpoints'
 import { useDispatch } from 'react-redux'
 import { followUser, unfollowUser } from '@/redux/followingSlice'
 import { LinearGradient } from 'expo-linear-gradient'
 import AppText from '@/components/app-text'
 import Icon from 'react-native-vector-icons/Ionicons'
 import { GRADIENT_COLORS, TROPHY_COLOR } from '@/constants/colors'
+import { apiEndpoints } from '@/api/endpoints'
+import { useFetchData } from '@/api/hooks/useFetchData'
 
 const User = () => {
   const dispatch = useDispatch()
 
-  const [userData, setUserData] = useState<any>(null)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
   const [following, setFollowing] = useState<boolean>(false)
   const [isProcessing, setIsProcessing] = useState<boolean>(false) // New state for tracking the follow/unfollow process
+
+  const {
+      data: userDetailsData,
+      loading: userDetailsLoading,
+      error: userDetailsError,
+      fetchDataFromServer: fetchUserDetails 
+  } = useFetchData()
+  
+  const {
+      data: streakData,
+      loading: streakLoading,
+      error: streakError,
+      fetchDataFromServer: fetchStreak 
+  } = useFetchData()
+  
+  const {
+      loading: checkFollowLoading,
+      fetchDataFromServer: fetchCheckFollow 
+  } = useFetchData()
 
   const { id: userId } = useLocalSearchParams()
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
         const myId = await getId()
 
         if (userId && myId) {
-          const userResponse = await apiClient.get(`/users/${userId}/`)
-          setUserData(userResponse.data)
+          await fetchUserDetails(apiEndpoints.users.details(Number(userId)))
+          await fetchStreak(apiEndpoints.streak.base(Number(userId)))
+          
 
-          const followStatusResponse = await apiClient.post(
-            `${API_ENDPOINTS.CHECK}${myId}/${userId}/`
-          )
+          const followStatusResponse = await fetchCheckFollow(apiEndpoints.users.checkFollow(Number(userId)))
 
-          setFollowing(followStatusResponse.data.message === 'Relationship exists')
+          setFollowing(followStatusResponse.is_following)
         } else {
           throw new Error('ID not found')
         }
-      } catch (err: any) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
     }
 
     fetchData()
@@ -57,12 +67,12 @@ const User = () => {
         setIsProcessing(true) // Set processing state to true while follow/unfollow is in progress
         
         const endpoint = following
-          ? `${API_ENDPOINTS.UNFOLLOW}${myId}/${userId}/`
-          : `${API_ENDPOINTS.FOLLOW}${myId}/${userId}/`
+          ? apiEndpoints.users.unfollow(Number(userId))
+          : apiEndpoints.users.follow(Number(userId))
 
         const method = following ? 'DELETE' : 'POST'
 
-        const response = await apiClient({
+        await apiClient({
           url: endpoint,
           method,
         })
@@ -70,7 +80,7 @@ const User = () => {
         if (following) {
           dispatch(unfollowUser({ id: Number(userId) }))
         } else {
-          dispatch(followUser({ id: userId, username: userData.username, top_streak: userData.top_streak }))
+          dispatch(followUser({ id: userId, username: userDetailsData.username, top_streak: streakData.top_streak }))
         }
 
         setFollowing(!following)
@@ -84,24 +94,26 @@ const User = () => {
     }
   }
 
-  if (loading) return (
+  if (userDetailsLoading || streakLoading || checkFollowLoading) return (
     <View style={styles.loaderContainer}>
       <ActivityIndicator size="large" />
     </View>
   )
 
-  if (error) return <AppText>Error: {error}</AppText>
-  if (!userData) return <AppText>No data available.</AppText>
+  if (userDetailsError) return <AppText>Error: {userDetailsError}</AppText>
+  if (streakError) return <AppText>Error: {streakError}</AppText>
+  if (!userDetailsData) return <AppText>No data available.</AppText>
+  if (!streakData) return <AppText>No data available.</AppText>
 
   return (
     <LinearGradient
         colors={GRADIENT_COLORS}
         style={styles.container}
     >
-      <AppText style={styles.title}>{userData.username}</AppText>
+      <AppText style={styles.title}>{userDetailsData.username}</AppText>
       <AppText style={styles.streak}>
             <Icon name="trophy" size={20} color={TROPHY_COLOR} style={styles.trophyIcon} />
-            Top Streak: {userData.top_streak}
+            Top Streak: {streakData.top_streak}
       </AppText>
       <TouchableOpacity
         style={following ? styles.unfollowButton : styles.followButton}

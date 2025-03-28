@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import apiClient from '../client';
 
-export const usePostData = (endpoint: string) => {
+export const usePostData = () => {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
-    const postDataToServer = async (postData: any) => {
+    const postDataToServer = async (endpoint: string, postData: any) => {
         setLoading(true);
         try {
             console.log('Sending POST request to:', endpoint);

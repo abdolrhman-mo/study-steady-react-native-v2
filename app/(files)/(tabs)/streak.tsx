@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getId } from '@/utils/tokenStorage';
-import apiClient from '@/api/client';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { setCurrentStreak, setTopStreak } from '@/redux/streakSlice';
@@ -11,38 +10,34 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { GRADIENT_COLORS, PRIMARY_COLOR, STREAK_COLOR_L1, STREAK_COLOR_L2, STREAK_COLOR_L3, TEXT_COLOR, TROPHY_COLOR, WHITE } from '@/constants/colors';
 import AppText from '@/components/app-text';
 import { shadowStyle } from '@/styles/styles';
+import { useFetchData } from '@/api/hooks/useFetchData';
+import { apiEndpoints } from '@/api/endpoints';
 
 export default function StreakScreen(): JSX.Element {
     const dispatch = useDispatch();
     const currentStreak = useSelector((state: RootState) => state.streak.currentStreak);
     const topStreak = useSelector((state: RootState) => state.streak.topStreak);
 
-    const [data, setData] = useState<any>(null);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
+    const { loading, error, fetchDataFromServer: fetchStreak } = useFetchData()
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const id = await getId();
                 if (id) {
-                    const response = await apiClient.get(`/streak/`);
+                    const response = await fetchStreak(apiEndpoints.streak.base(id))
                     console.log(`streak response.data: ${response.data}`)
-                    setData(response.data);
 
-                    dispatch(setCurrentStreak({ currentStreak: response.data.current_streak, lastStudyDate: response.data.last_study_date }));
+                    dispatch(setCurrentStreak({ currentStreak: response.data.current_streak }));
                     dispatch(setTopStreak(response.data.top_streak));
                 } else {
                     throw new Error('ID not found');
                 }
             } catch (err: any) {
-                setError(err.message);
 
                 if (err.code == "ERR_NETWORK") {
                     
                 }
-            } finally {
-                setLoading(false);
             }
         };
 

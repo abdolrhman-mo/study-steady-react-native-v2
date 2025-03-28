@@ -1,64 +1,45 @@
-import { Link, Tabs, Stack } from 'expo-router';
+import { Link, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, Image, ActivityIndicator, StyleSheet } from 'react-native';
-import { getId, getUserData, saveUserData } from '@/utils/tokenStorage';
+import { View, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { getId, getUserData } from '@/utils/tokenStorage';
 import { useEffect, useState } from 'react';
-import apiClient from '@/api/client';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { setCurrentStreak } from '@/redux/streakSlice';
+import apiClient from '@/api/client';
 import AppText from '@/components/app-text';
+import { useFetchData } from '@/api/hooks/useFetchData';
+import { apiEndpoints } from '@/api/endpoints';
 
-const hasOneDayPassed = (apiDateString: string) => {
-  const apiDate = new Date(apiDateString); // Convert API string to Date object
-  const currentDate = new Date();
-
-  // Get time difference in milliseconds
-  const timeDifference = currentDate.getTime() - apiDate.getTime();
-
-  // Convert milliseconds to days
-  const daysPassed = timeDifference / (1000 * 60 * 60 * 24);
-
-  return daysPassed > 1; // Returns true if at least one day has passed
-};
 
 export default function TabLayout() {
   const dispatch = useDispatch();
   const currentStreak = useSelector((state: RootState) => state.streak.currentStreak);
 
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [endpoint, setEndpoint] = useState<string>('');
+  const { loading, fetchDataFromServer: fetchStreak } = useFetchData()
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const myId = await getId();
-        if (myId) {
-          // Construct the dynamic endpoint
-          const dynamicEndpoint = `/users/${myId}/`;
-          setEndpoint(dynamicEndpoint); // Set the endpoint state to trigger useEffect
-
-          const response = await apiClient.get(dynamicEndpoint)
+        const id = await getId();
+        if (id) {
+          const response = await fetchStreak(apiEndpoints.streak.base(id))
 
           // Global State Current streak
-          dispatch(setCurrentStreak({ currentStreak: response.data.current_streak, lastStudyDate: response.data.last_study_date }))
+          dispatch(setCurrentStreak({ currentStreak: response.data.current_streak }))
         } else {
           throw new Error('ID not found');
         }
       } catch (err: any) {
-        setError(err.message)
 
         if (err.code == "ERR_NETWORK") {
             const userLocalData = await getUserData()
 
             if (userLocalData) {
-                dispatch(setCurrentStreak({ currentStreak: userLocalData.currentStreak, lastStudyDate: userLocalData.lastStudyDate }))
+                dispatch(setCurrentStreak({ currentStreak: userLocalData.currentStreak }))
             }
         }
 
-      } finally {
-        setLoading(false);
       }
     };
 

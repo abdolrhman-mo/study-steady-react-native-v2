@@ -1,76 +1,68 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, FlatList, TextInput, Button, TouchableOpacity } from 'react-native';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useSelector, useDispatch } from 'react-redux';
 import { setFollowingList } from '@/redux/followingSlice';
 import { RootState } from '@/redux/store';
 import { useFetchData } from '@/api/hooks/useFetchData';
-import { API_ENDPOINTS } from '@/api/endpoints';
+import { apiEndpoints } from '@/api/endpoints';
 import { getId } from '@/utils/tokenStorage';
-import apiClient from '@/api/client';
-import Icon from 'react-native-vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GRADIENT_COLORS, PRIMARY_COLOR, SECONDARY_COLOR, TROPHY_COLOR, WHITE } from '@/constants/colors';
-import AppText from '@/components/app-text';
 import { shadowStyle } from '@/styles/styles';
+import AppText from '@/components/app-text';
+import Icon from 'react-native-vector-icons/Ionicons';
 import Error from '@/components/error-view';
 
 const Leaderboard = () => {
     const dispatch = useDispatch()
-    // const followingList = useSelector((state: RootState) => state.following.followingList)
     const followingCount = useSelector((state: RootState) => state.following.followingCount)
     const followersCount = useSelector((state: RootState) => state.following.followersCount)
-    // const { data: followingListData, loading: followingListLoading, error: followingListError } = useFetchData(API_ENDPOINTS.FOLLOWING)
-
-    const [userData, setUserData] = useState<any>(null)
-    const [userLoading, setUserLoading] = useState<boolean>(true)
-    const [userError, setUserError] = useState<string | null>(null)
     
-    const [followingListData, setFollowingListData] = useState<any>(null)
-    const [followingListLoading, setFollowingListLoading] = useState<boolean>(true)
-    const [followingListError, setFollowingListError] = useState<string | null>(null)
+    const {
+        data: userDetailsData,
+        loading: userDetailsLoading,
+        error: userDetailsError,
+        fetchDataFromServer: fetchUserDetails
+    } = useFetchData() // Hook
 
-    // Fetch user info
+    const {
+        data: followingListData,
+        loading: followingListLoading,
+        error: followingListError,
+        fetchDataFromServer: fetchFollowingList
+    } = useFetchData() // Hook
+
+    const {
+        data: userStatsData,
+        loading: userStatsLoading,
+        fetchDataFromServer: fetchUserStats
+    } = useFetchData() // Hook
+
     useEffect(() => {
         const fetchUserData = async () => {
-            try {
-                const id = await getId();
-                if (id) {
-                    const res1 = await apiClient.get(`/users/${id}/`);
-                    const res3 = await apiClient.get(`/users/stats/${id}/`)
-                    setUserData({
-                        username: res1.data.username,
-                        following_count: res3.data.following_count,
-                        followers_count: res3.data.followers_count,
-                    });
-                    console.log('leaderboard user data', res1.data);
-                    
-                    const res2 = await apiClient.get(`/users/following/${id}/`)
-                    console.log('leaderboard following list data', res2.data);
-                    setFollowingListData(res2.data)
-                }
-            } catch (err: any) {
-                setUserError(err.message)
-            } finally {
-                setUserLoading(false)
-                setFollowingListLoading(false)
+            const id = await getId();
+            if (id) {
+                await fetchUserDetails(apiEndpoints.users.details(id))
+                await fetchUserStats(apiEndpoints.users.stats(id))
+                await fetchFollowingList(apiEndpoints.users.followingStreaks(id))
             }
-        };
-        fetchUserData();
-    }, []);
+        }
+        fetchUserData()
+    }, [])
 
     // Sync Redux state with fetched data
     useEffect(() => {
-        if (followingListData && userData) {
+        if (followingListData && userDetailsData && userStatsData) {
             dispatch(setFollowingList({
                 followingList: followingListData, 
-                followersCount: userData.followers_count,
-                followingCount: userData.following_count
+                followersCount: userStatsData.followers_count,
+                followingCount: userStatsData.following_count
             }));
         }
-    }, [followingListData, dispatch, userData]);
+    }, [followingListData, userDetailsData, userStatsData, dispatch]);
 
-    if (followingListLoading || userLoading)
+    if (followingListLoading || userDetailsLoading || userStatsLoading)
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#E87C39" />
@@ -81,22 +73,22 @@ const Leaderboard = () => {
         return (
             <Error error={followingListError} />
         )
-    if (userError)
+    if (userDetailsError)
         return (
-            <Error error={userError} />
+            <Error error={userDetailsError} />
         )
         
     
     const renderItem = ({ item }: { item: any }) => {
         const handlePress = () => {
-            router.push(`/user/${item.id}`)
+            router.push(`/user/${item.following.id}`)
         }
         return (
             <TouchableOpacity onPress={handlePress} style={styles.tableRow}>
-                <AppText style={styles.rowText}>{item.username}</AppText>
+                <AppText style={styles.rowText}>{item.following.username}</AppText>
                 <View style={styles.streakContainer}>
                     <Icon name="trophy" size={20} color={TROPHY_COLOR} style={styles.trophyIcon} />
-                    <AppText style={styles.rowText}>{item.top_streak}</AppText>
+                    <AppText style={styles.rowText}>{item.following.top_streak}</AppText>
                 </View>
             </TouchableOpacity>
         )
@@ -107,28 +99,22 @@ const Leaderboard = () => {
             colors={GRADIENT_COLORS}
             style={styles.container}
         >
-            {/* <TextInput
-                style={styles.searchBar}
-                placeholder="Search for friends"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-            /> */}
             <TouchableOpacity style={styles.searchBar} onPress={() => router.push('/search')}>
                 <Text style={{ fontSize: 14 , paddingTop: 9, opacity: 0.95 }}>Search for friends</Text>
             </TouchableOpacity>
     
             {/* Personal-Info Box */}
-            {userData && (
+            {userDetailsData && (
                 <View style={[styles.personalInfo, shadowStyle.default]}>
                     <View style={styles.infoBlock}>
                         <Icon name="person-circle-outline" size={50} color="#E87C39" />
-                        <AppText style={styles.infoText}>{userData.username}</AppText>
+                        <AppText style={styles.infoText}>{userDetailsData.username}</AppText>
                     </View>
-                    <TouchableOpacity style={styles.infoBlock} onPress={() => router.push('/FollowersFollowing')}>
+                    <TouchableOpacity style={styles.infoBlock} onPress={() => router.push('/followers-following')}>
                         <AppText style={styles.infoLabel}>Followers</AppText>
                         <AppText style={styles.infoText}>{followersCount}</AppText>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.infoBlock} onPress={() => router.push('/FollowersFollowing')}>
+                    <TouchableOpacity style={styles.infoBlock} onPress={() => router.push('/followers-following')}>
                         <AppText style={styles.infoLabel}>Following</AppText>
                         <AppText style={styles.infoText}>{followingCount}</AppText>
                     </TouchableOpacity>

@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { GRADIENT_COLORS, PRIMARY_COLOR } from '@/constants/colors';
 import AppText from '@/components/app-text';
 import { Link } from 'expo-router';
+import { apiEndpoints } from '@/api/endpoints';
 
 export default function FollowersFollowing() {
   const [data, setData] = useState({ followers: [], following: [] });
@@ -22,17 +23,18 @@ export default function FollowersFollowing() {
 
   useEffect(() => {
     if (!currentUserId) return;
-    setLoading(true);
     (async () => {
       try {
         const id = await getId();
 
-        const endpoint = activeTab === 'followers' ? `/users/followers/${id}/` : `/users/following/${id}/`;
-        const response = await apiClient.get(endpoint);
-        const filteredList = response.data.filter((f: any) => 
-          (activeTab === 'followers' ? f.follower.id : f.following.id) !== currentUserId
-        );
-        setData((prev) => ({ ...prev, [activeTab]: filteredList }));
+        if (id) {
+            const endpoint = activeTab === 'followers' ? apiEndpoints.users.followers(id) : apiEndpoints.users.following(id);
+            const response = await apiClient.get(endpoint);
+            const filteredList = response.data.filter((f: any) => 
+                (activeTab === 'followers' ? f.follower.id : f.following.id) !== currentUserId
+            );
+            setData((prev) => ({ ...prev, [activeTab]: filteredList }));
+        }
       } catch (err: any) {
         setError(err.message);
       } finally {

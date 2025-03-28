@@ -12,11 +12,12 @@ export default function Layout() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Fonts
   const [fontsLoaded] = useFonts({
     Poppins_Regular: Poppins_400Regular,
     Poppins_Bold: Poppins_700Bold,
   });
-  
+
   useEffect(() => {
     async function prepare() {
       await SplashScreen.preventAutoHideAsync();
@@ -27,6 +28,7 @@ export default function Layout() {
     prepare();
   }, [fontsLoaded]);
 
+  // Is Authenticated
   useEffect(() => {
     const checkAuth = async () => {
       const token = await getToken();
