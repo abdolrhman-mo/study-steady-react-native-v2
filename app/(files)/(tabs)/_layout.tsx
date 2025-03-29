@@ -17,16 +17,19 @@ export default function TabLayout() {
   const currentStreak = useSelector((state: RootState) => state.streak.currentStreak);
 
   const { loading, fetchDataFromServer: fetchStreak } = useFetchData()
+//   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const id = await getId();
         if (id) {
+        // if (true) {
           const response = await fetchStreak(apiEndpoints.streak.base(id))
 
           // Global State Current streak
           dispatch(setCurrentStreak({ currentStreak: response.data.current_streak }))
+        //   dispatch(setCurrentStreak({ currentStreak: 1 }))
         } else {
           throw new Error('ID not found');
         }
