@@ -15,6 +15,7 @@ import { Svg, Circle } from 'react-native-svg'
 import { shadowStyle } from '@/styles/styles';
 import { useFetchData } from '@/api/hooks/useFetchData';
 import * as Notifications from 'expo-notifications';
+import { NavigationProp, useNavigation } from '@react-navigation/native';
 
 /*
     ### Timer ###
@@ -45,6 +46,8 @@ export default function Timer(): JSX.Element {
     const [sessionReminderVisible, setSessionReminderVisible] = useState<boolean>(false);
     const [promptModalVisible, setPromptModalVisible] = useState<boolean>(false);
     const dispatch = useDispatch();
+    const [notificationTimeoutId, setNotificationTimeoutId] = useState<NodeJS.Timeout | null>(null);
+    const navigation = useNavigation<NavigationProp<any>>();
     // API Calls Hooks
     const { 
         data: saveSessionRes,
@@ -59,6 +62,16 @@ export default function Timer(): JSX.Element {
     // Notification Request Permission
     useEffect(() => {
         Notifications.requestPermissionsAsync();
+    }, []);
+
+    // Handle Notification click on mobile
+    useEffect(() => {
+        const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+            console.log('Notification Clicked:', response);
+            navigation.navigate('index'); // Replace with your actual screen
+        });
+
+        return () => subscription.remove();
     }, []);
     
     // *********************** API Calls ***********************
@@ -98,6 +111,7 @@ export default function Timer(): JSX.Element {
     // *********************** Notifications ***********************
     const scheduleNotification = async (minutes: number) => {
         const seconds = minutes * 60
+        // Mobile Notifications
         if (Platform.OS !== 'web') {
             await Notifications.scheduleNotificationAsync({
                 content: {
@@ -107,8 +121,37 @@ export default function Timer(): JSX.Element {
                 },
                 trigger: { seconds, repeats: false } as Notifications.TimeIntervalTriggerInput,
             });
-        } else {
-            console.log("Notifications are not supported on the web.");
+        } 
+
+        // Web Notifications
+        else {
+            if (Notification.permission === 'granted') {
+                setTimeout(() => {
+                    const notification = new Notification('⏰ Time is up!', {
+                        body: 'Click to return to the timer!',
+                    });
+
+                    // Handle notification click
+                    notification.onclick = () => {
+                        window.focus(); // Bring tab to focus
+                    };
+                }, seconds * 1000);
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        setTimeout(() => {
+                            const notification = new Notification('⏰ Time is up!', {
+                                body: 'Click to return to the timer!',
+                            });
+
+                            // Handle notification click
+                            notification.onclick = () => {
+                                window.focus(); // Bring tab to focus
+                            };
+                        }, seconds * 1000);
+                    }
+                });
+            }
         }
     };
     
@@ -116,9 +159,28 @@ export default function Timer(): JSX.Element {
         if (Platform.OS !== 'web') {
             await Notifications.cancelAllScheduledNotificationsAsync();
         } else {
-            console.log("Notifications are not supported on the web.");
+            if (notificationTimeoutId) {
+                clearTimeout(notificationTimeoutId);
+                setNotificationTimeoutId(null);
+                console.log('Web notification timeout cleared.');
+            }
         }
     };
+
+    // Web Notifications check if Tab is Active or InActive
+    // if Active scheduleNotification
+    // else it removes scheduleNotification
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden' && isRunning) {
+                console.log('Tab is hidden, switching to web notification');
+                scheduleNotification(timeLeft / 60); // Send web notification
+            }
+        };
+    
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [isRunning, timeLeft]);
 
     
     // *********************** Timer ***********************
@@ -289,8 +351,7 @@ export default function Timer(): JSX.Element {
           <View style={styles.buttonsContainer}>
             <TouchableOpacity
               style={[styles.minsButton, isRunning && !isPaused && styles.disabledButton]}
-              onPress={() => startTimer(25)}
-            //   onPress={() => startTimer(0.1)}
+              onPress={() => startTimer(0.2)}
               disabled={isRunning && !isPaused}
             >
               <Icon name="timer-outline" size={20} color={PRIMARY_COLOR} />
