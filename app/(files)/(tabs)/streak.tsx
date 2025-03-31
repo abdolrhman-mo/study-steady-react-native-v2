@@ -12,6 +12,26 @@ import AppText from '@/components/app-text';
 import { shadowStyle } from '@/styles/styles';
 import { useFetchData } from '@/api/hooks/useFetchData';
 import { apiEndpoints } from '@/api/endpoints';
+import { format } from "date-fns" // date functions (fns) library
+import { BarChart, XAxis, YAxis, Bar, Tooltip, CartesianGrid, ReferenceLine } from "recharts"
+
+// Function to format data for 12AM - 11PM
+const formatStudyData = (sessions: any) => {
+    // Step 1: Generate all hours from 12AM to 11PM
+    const hours = Array.from({ length: 24 }, (_, i) => ({
+      time: `${i.toString().padStart(2, "0")}:00`, // "00:00", "01:00", ..., "23:00"
+      duration: 0, // Default value
+    }));
+  
+    // Step 2: Fill in actual study durations
+    sessions.forEach((session: any) => {
+      const date = new Date(session.created_at);
+      const hour = date.getHours(); // Extract hour (0-23)
+      hours[hour].duration += session.duration; // Add to that hour
+    });
+  
+    return hours;
+};
 
 export default function StreakScreen(): JSX.Element {
     const dispatch = useDispatch();
@@ -19,17 +39,40 @@ export default function StreakScreen(): JSX.Element {
     const topStreak = useSelector((state: RootState) => state.streak.topStreak);
 
     const { loading, error, fetchDataFromServer: fetchStreak } = useFetchData()
+    const { data: sessionsData, fetchDataFromServer: fetchSessions } = useFetchData()
+
+    const [formattedData, setFormattedData] = useState<any>(null)
+    const [currentHour, setCurrentHour] = useState(format(new Date(), "HH:00"));
+
+    // Now Refernce Line at Barchart
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentHour(format(new Date(), "HH:00")); // Update every minute
+        }, 60000); // 60,000ms = 1 minute
+
+        return () => clearInterval(interval); // Cleanup on unmount
+    }, []);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const id = await getId();
                 if (id) {
-                    const response = await fetchStreak(apiEndpoints.streak.base(id))
-                    console.log(`streak response.data: ${response.data}`)
+                    const streakResponse = await fetchStreak(apiEndpoints.streak.base(id))
 
-                    dispatch(setCurrentStreak({ currentStreak: response.data.current_streak }));
-                    dispatch(setTopStreak(response.data.top_streak));
+                    dispatch(setCurrentStreak({ currentStreak: streakResponse.current_streak }));
+                    dispatch(setTopStreak(streakResponse.top_streak));
+
+                    const sessionsResponse = await fetchSessions(apiEndpoints.session.base) // returns all sessions with iso format dates
+                    console.log('streak.tsx sessionsResponse', sessionsResponse)
+                    if (sessionsResponse) {
+
+                        const formattedDataConst = formatStudyData(sessionsResponse.today_sessions)
+
+                        setFormattedData(formattedDataConst)
+
+                        console.log('streak.tsx sessionsResponse', sessionsResponse)
+                    }
                 } else {
                     throw new Error('ID not found');
                 }
@@ -74,7 +117,7 @@ export default function StreakScreen(): JSX.Element {
 
 
             {/* Quick Streak Guide */}
-            <View style={styles.infoContainer}>
+            {/* <View style={styles.infoContainer}>
                 <AppText style={styles.infoTitle}>Streak Guide</AppText>
                 <View style={styles.badgeRow}>
                     <View style={[styles.badge, 
@@ -99,6 +142,84 @@ export default function StreakScreen(): JSX.Element {
                         <AppText style={styles.badgeText}>4 h+</AppText>
                     </View>
                 </View>
+            </View> */}
+
+            {/* Sessions Data */}
+            <View style={styles.sessionsContainer}>
+                <AppText style={styles.sessionsDate}>Today, {format(Date(), "dd MMMM")}</AppText>
+                <AppText style={styles.sessionsTitle}>{Math.floor(sessionsData?.today_total / 60)}h {sessionsData?.today_total % 60}m</AppText>
+                <BarChart 
+                    width={300} height={200} data={formattedData}
+                    // style={{ backgroundColor: "#121212", borderRadius: 10, padding: 10 }}
+                    margin={{ top: 20, right: 20, left: -10, bottom: 20 }}
+                >
+                    <CartesianGrid stroke="#aaa" strokeDasharray="7 3" vertical={false} />
+
+                    <XAxis 
+                        dataKey="time"
+                        scale="point"  // Ensures even spacing without padding issues
+                        tickFormatter={(time) => {
+                            const [hour] = time.split(":").map(Number);
+                            const suffix = hour < 12 ? "AM" : "PM";
+                            const formattedHour = hour % 12 || 12; // Convert 0 to 12
+                            return `${formattedHour}${suffix}`;
+                        }}
+                        interval={5}
+                        tick={{ 
+                            fontSize: 13, fontWeight: "500", 
+                            fontFamily: "Inter, Arial, sans-serif", 
+                            // fill: "#aaa", 
+                            dx: 20, dy: -11
+                        }} 
+                        // tickLine={false} // Removes small lines under ticks
+                        // axisLine={false} // Hides the axis line
+                        tickLine={{ stroke: "#aaa", strokeWidth: 2 }} tickSize={20}
+                    />
+                    <YAxis 
+                        domain={[0, 50]}
+                        tickFormatter={(value) => `${value}m`}
+                        tickCount={3}
+                        tick={{ 
+                            fontSize: 15, fontWeight: "500", 
+                            fontFamily: "Inter, Arial, sans-serif", 
+                            dx: -5 
+                        }} 
+                        tickLine={false} // Removes small lines under ticks
+                        // axisLine={false} // Hides the axis line
+                    />
+
+                    {/* NOW Marker */}
+                    <ReferenceLine 
+                        x={currentHour} 
+                        stroke="red" 
+                        strokeDasharray="3 3" 
+                        label={{ 
+                            value: "Now", 
+                            position: "top", fill: "red", 
+                            fontSize: 12, fontFamily: "Inter, Arial, sans-serif", 
+                            dy: -5
+                        }}
+                    />
+
+                    <defs>
+                        <linearGradient id="barColor" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={PRIMARY_COLOR} stopOpacity={1} />
+                            <stop offset="100%" stopColor={GRADIENT_COLORS[0]} stopOpacity={1} />
+                        </linearGradient>
+                    </defs>
+                    <Bar 
+                        dataKey="duration" 
+                        fill="url(#barColor)" 
+                        barSize={15}
+                        radius={[2, 2, 0, 0]} 
+                    />
+
+                    {/* Modernized Tooltip */}
+                    <Tooltip 
+                        contentStyle={{ borderRadius: 8, padding: 8 }} 
+                        labelStyle={{ color: "#aaa", fontSize: 12 }} 
+                    />
+                </BarChart>
             </View>
         </LinearGradient>
     );
@@ -195,4 +316,27 @@ export const styles = StyleSheet.create({
         alignItems: 'center',
     },
 
+    sessionsContainer: {
+        marginVertical: 20,
+        padding: 20,
+        backgroundColor: WHITE,
+        borderRadius: 15,
+        width: '90%',
+        alignSelf: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
+        elevation: 5,
+    },
+    sessionsDate: {
+        fontSize: 16,
+        color: TEXT_COLOR,
+    },
+    sessionsTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: TEXT_COLOR,
+        marginBottom: 15,
+    },
 });

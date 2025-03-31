@@ -24,6 +24,7 @@
     "@react-navigation/native": "^7.0.14",
     "@reduxjs/toolkit": "^2.5.1",
     "axios": "^1.7.9",
+    "date-fns": "^4.1.0",
     "expo-app-loading": "^2.1.1",
     "expo-av": "~15.0.2",
     "expo-blur": "~14.0.3",
@@ -43,6 +44,7 @@
     "expo-system-ui": "~4.0.7",
     "expo-updates": "~0.26.13",
     "expo-web-browser": "~14.0.2",
+    "firebase": "^11.5.0",
     "lottie-react-native": "7.1.0",
     "moment": "^2.30.1",
     "my-app": "file:",
@@ -59,7 +61,8 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "react-redux": "^9.2.0"
+    "react-redux": "^9.2.0",
+    "recharts": "^2.15.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

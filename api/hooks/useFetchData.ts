@@ -11,7 +11,7 @@ export const useFetchData = () => {
         try {
             const response = await apiClient.get(endpoint);
 
-            console.log('useFetchData Hook Response', response.data)
+            // console.log('useFetchData Hook Response', response.data)
 
             setData(response.data);
             return response.data;

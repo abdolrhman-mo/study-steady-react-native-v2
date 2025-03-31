@@ -14,14 +14,12 @@ import { GRADIENT_COLORS, PRIMARY_COLOR } from '@/constants/colors';
 import { Svg, Circle } from 'react-native-svg'
 import { shadowStyle } from '@/styles/styles';
 import { useFetchData } from '@/api/hooks/useFetchData';
-import * as Notifications from 'expo-notifications';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
+import { getMessaging, getToken } from "firebase/messaging";
+import { app } from "@/firebaseConfig";
 
-/*
-    ### Timer ###
-    The timer uses Date.now() => Returns the current time in milliseconds since January 1, 1970 (Unix Epoch)
-*/
-
+// Configure how notifications are handled
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
@@ -41,6 +39,10 @@ export default function Timer(): JSX.Element {
     const [duration, setDuration] = useState<number>(0);
     const [isBreak, setIsBreak] = useState<boolean>(false);
     const [sound, setSound] = useState<Audio.Sound | null>(null);
+    // Firebase
+    const [expoPushToken, setExpoPushToken] = useState<string>("");
+    const notificationListener = useRef<any>();
+    const responseListener = useRef<any>();
     // More States
     const [modalVisible, setModalVisible] = useState<boolean>(false);
     const [sessionReminderVisible, setSessionReminderVisible] = useState<boolean>(false);
@@ -61,7 +63,20 @@ export default function Timer(): JSX.Element {
 
     // Notification Request Permission
     useEffect(() => {
-        Notifications.requestPermissionsAsync();
+        // Request permissions
+        async function registerForPushNotifications() {
+            const { status } = await Notifications.requestPermissionsAsync();
+            if (status !== "granted") {
+                return;
+            }
+    
+            // Get Expo push token
+            // const token = (await Notifications.getExpoPushTokenAsync()).data;
+            // console.log("Expo Push Token:", token);
+            // setExpoPushToken(token);
+        }
+    
+        registerForPushNotifications();
     }, []);
 
     // Handle Notification click on mobile
@@ -108,12 +123,33 @@ export default function Timer(): JSX.Element {
         }
     }, [saveSessionRes, saveSessionLoading])
 
-    // *********************** Notifications ***********************
+    
+    // *********************** Firebase Notifications ***********************
+    useEffect(() => {
+        // Listener for foreground notifications
+        notificationListener.current = Notifications.addNotificationReceivedListener((notification) => {
+            console.log("Notification received:", notification);
+        });
+
+        // Listener for user interaction (clicking on the notification)
+        responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+            console.log("User interacted with notification:", response);
+        });
+
+        return () => {
+            // Clean up listeners
+            Notifications.removeNotificationSubscription(notificationListener.current);
+            Notifications.removeNotificationSubscription(responseListener.current);
+        };
+    }, []);
+
+
+    // *********************** Local Notifications ***********************
     const scheduleNotification = async (minutes: number) => {
         const seconds = minutes * 60
         // Mobile Notifications
         if (Platform.OS !== 'web') {
-            await Notifications.scheduleNotificationAsync({
+            await Notifications.scheduleNotificationAsync({ // Scheduling an expo local notification
                 content: {
                     title: '⏰ Time is up!',
                     body: 'Your Pomodoro session has ended.',
@@ -126,7 +162,7 @@ export default function Timer(): JSX.Element {
         // Web Notifications
         else {
             if (Notification.permission === 'granted') {
-                setTimeout(() => {
+                setTimeout(() => { // Scheduling a web notification
                     const notification = new Notification('⏰ Time is up!', {
                         body: 'Click to return to the timer!',
                     });
@@ -279,6 +315,8 @@ export default function Timer(): JSX.Element {
     const handleCancel = (): void => {
         stopSound();
         setModalVisible(false);
+        // Cancel the scheduled notification
+        cancelNotification();
     };
 
     const handleNewSession = (): void => {
